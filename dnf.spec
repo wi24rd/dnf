@@ -1,5 +1,8 @@
 # Always build out-of-source
-%undefine __cmake_in_source_build
+%if (0%{?fedora} && 0%{?fedora} <= 32) || 0%{?rhel}
+%else
+    %undefine __cmake_in_source_build
+%endif
 
 # default dependencies
 %global hawkey_version 0.55.3
@@ -187,19 +190,35 @@ Systemd units that can periodically download package upgrades and apply them.
 %prep
 %autosetup
 
+%if (0%{?fedora} && 0%{?fedora} <= 32) || 0%{?rhel}
+    mkdir build-py3
+%endif
 
 %build
 
-%global _vpath_builddir build-py3
-%cmake -DPYTHON_DESIRED:FILEPATH=%{__python3} -DDNF_VERSION=%{version}
-%cmake_build
-%cmake_build --target doc-man
-
+%if (0%{?fedora} && 0%{?fedora} <= 32) || 0%{?rhel}
+    pushd build-py3
+    %cmake .. -DPYTHON_DESIRED:FILEPATH=%{__python3} -DDNF_VERSION=%{version}
+    %make_build
+    make doc-man
+    popd
+%else
+    %global _vpath_builddir build-py3
+    %cmake -DPYTHON_DESIRED:FILEPATH=%{__python3} -DDNF_VERSION=%{version}
+    %cmake_build
+    %cmake_build --target doc-man
+%endif
 
 %install
 
-%global _vpath_builddir build-py3
-%cmake_install
+%if (0%{?fedora} && 0%{?fedora} <= 32) || 0%{?rhel}
+    pushd build-py3
+    %make_install
+    popd
+%else
+    %global _vpath_builddir build-py3
+    %cmake_install
+%endif
 
 %find_lang %{name}
 mkdir -p %{buildroot}%{confdir}/vars
@@ -235,8 +254,14 @@ ln -sr  %{buildroot}%{confdir}/vars %{buildroot}%{_sysconfdir}/yum/vars
 
 %check
 
-%global _vpath_builddir build-py3
-%ctest
+%if (0%{?fedora} && 0%{?fedora} <= 32) || 0%{?rhel}
+    pushd build-py3
+    ctest -VV
+    popd
+%else
+    %global _vpath_builddir build-py3
+    %ctest
+%endif
 
 
 %post
